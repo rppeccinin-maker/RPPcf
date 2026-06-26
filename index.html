@@ -994,6 +994,13 @@
     meses.forEach((n, i) => ms.innerHTML += `<option value="${i}" ${db.start_calc_month == i ? 'selected' : ''}>${n.toUpperCase()}</option>`);
     [2024, 2025, 2026, 2027].forEach(y => ys.innerHTML += `<option value="${y}" ${db.start_calc_year == y ? 'selected' : ''}>${y}</option>`);
     setupPinKeyboard(); recalcularTudo(); render();
+    <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Service Worker Ativo!'))
+      .catch(err => console.log('Erro no Service Worker:', err));
+  }
+</script>
 </script>
 </body>
 </html>
