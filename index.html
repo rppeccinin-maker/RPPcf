@@ -291,7 +291,7 @@
 
     <section id="projecao" class="content-section">
         <button class="btn btn-primary shimmer" onclick="openModalLancar('modal-proj-12')">PROJEÇÃO FINANCEIRA 12 MESES</button>
-        <button class="btn btn-primary shimmer" onclick="openModalLancar('modal-proj-resps')">PROJEÇÃO RESPONSÁVEIS 12 MESES</button>
+        <button class="btn btn-primary shimmer" onclick="renderRespsProjection()">PROJEÇÃO RESPONSÁVEIS 12 MESES</button>
     </section>
 </div>
 
@@ -876,8 +876,8 @@
         (data.recebidos || []).forEach(r => { totalGeral += parseNum(r.val); list.innerHTML += `<div class="history-item"><span>${esc(r.desc)}</span><b style="color:var(--success)">+ ${fmt.format(parseNum(r.val))}</b></div>`; });
         db.cofres.forEach(c => {
             const mov = data.mov_cofres?.[c.id] || {in:0, out:0};
-            if(mov.in > 0) { totalGeral -= mov.in; list.innerHTML += `<div class="history-item"><span>${c.nome} (+)</span><b style="color:var(--danger)">- ${fmt.format(mov.in)}</b></div>`; }
-            if(mov.out > 0) { totalGeral += mov.out; list.innerHTML += `<div class="history-item"><span>${c.nome} (-)</span><b style="color:var(--success)">+ ${fmt.format(mov.out)}</b></div>`; }
+            if(mov.in > 0) { totalGeral -= mov.in; list.innerHTML += `<div class="history-item"><span>${esc(c.nome)} (+)</span><b style="color:var(--danger)">- ${fmt.format(mov.in)}</b></div>`; }
+            if(mov.out > 0) { totalGeral += mov.out; list.innerHTML += `<div class="history-item"><span>${esc(c.nome)} (-)</span><b style="color:var(--success)">+ ${fmt.format(mov.out)}</b></div>`; }
         });
         db.fixed_accounts.forEach(acc => { const v = parseNum(data.fixed?.[acc.id]); if (v > 0) { totalGeral -= v; list.innerHTML += `<div class="history-item"><span>${esc(acc.n)}</span><b style="color:var(--danger)">- ${fmt.format(v)}</b></div>`; } });
         db.parcelamentos.forEach(p => { const st = p.startY * 12 + p.startM; if (curT >= st && curT < st + p.qtd) { totalGeral -= p.val; list.innerHTML += `<div class="history-item"><span>${esc(p.desc)}</span><b style="color:var(--danger)">- ${fmt.format(p.val)}</b></div>`; } });
@@ -920,6 +920,39 @@
             bG.innerHTML += `<tr style="border-bottom:1px solid var(--border)"><td style="padding:10px">${meses[m]}/${y}</td><td style="padding:10px; color:var(--success)">${fmt.format(incPrevisto)}</td><td style="padding:10px; color:var(--danger)">${fmt.format(expPrevista)}</td><td style="padding:10px; font-weight:800; color:${finalMes >= 0 ? 'var(--success)' : 'var(--danger)'}">${fmt.format(finalMes)}</td></tr>`;
             runB = finalMes;
         }
+    }
+
+    function renderRespsProjection() {
+        const container = document.getElementById('body-proj-resps');
+        container.innerHTML = '';
+        const { m: sM, y: sY } = getPeriod();
+        let nomes = new Set();
+        db.fixed_accounts.forEach(a => { if(norm(a.r) !== 'CASA' && a.r !== '') nomes.add(norm(a.r)); });
+        db.parcelamentos.forEach(p => { if(norm(p.resp) !== 'CASA' && p.resp !== '') nomes.add(norm(p.resp)); });
+        const listaNomes = Array.from(nomes).sort();
+        if (listaNomes.length === 0) {
+            container.innerHTML = '<p style="padding:20px; text-align:center; font-size:0.7rem;">Nenhum responsável além da CASA encontrado.</p>';
+            document.getElementById('modal-proj-resps').style.display = 'flex';
+            return;
+        }
+        let html = `<div style="overflow-x:auto"><table style="width:100%; border-collapse: collapse; font-size: 0.65rem; text-align: left;">
+                    <thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:10px">Mês</th>`;
+        listaNomes.forEach(n => { html += `<th style="padding:10px">${n}</th>`; });
+        html += `</tr></thead><tbody>`;
+        for(let i=0; i<12; i++) {
+            let d = new Date(sY, sM + i, 1); const m = d.getMonth(), y = d.getFullYear(), k = `${m}_${y}`, dM = db.meses_dados[k] || {};
+            html += `<tr style="border-bottom:1px solid var(--border)"><td style="padding:10px; font-weight:700">${meses[m]}/${y.toString().slice(-2)}</td>`;
+            listaNomes.forEach(nome => {
+                let tM = 0; const nN = norm(nome);
+                db.fixed_accounts.forEach(acc => { if(norm(acc.r) === nN) tM += parseNum(dM.fixed?.[acc.id] || 0); });
+                db.parcelamentos.forEach(p => { const st = p.startY * 12 + p.startM, ct = y * 12 + m; if (ct >= st && ct < st + p.qtd && norm(p.resp) === nN) tM += p.val; });
+                html += `<td style="padding:10px; color:${tM > 0 ? 'var(--danger)' : 'var(--text-muted)'}">${tM > 0 ? fmt.format(tM) : '-'}</td>`;
+            });
+            html += `</tr>`;
+        }
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+        document.getElementById('modal-proj-resps').style.display = 'flex';
     }
 
     function openTab(t) { 
@@ -994,13 +1027,6 @@
     meses.forEach((n, i) => ms.innerHTML += `<option value="${i}" ${db.start_calc_month == i ? 'selected' : ''}>${n.toUpperCase()}</option>`);
     [2024, 2025, 2026, 2027].forEach(y => ys.innerHTML += `<option value="${y}" ${db.start_calc_year == y ? 'selected' : ''}>${y}</option>`);
     setupPinKeyboard(); recalcularTudo(); render();
-    <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Service Worker Ativo!'))
-      .catch(err => console.log('Erro no Service Worker:', err));
-  }
-</script>
 </script>
 </body>
 </html>
